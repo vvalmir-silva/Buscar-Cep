@@ -2,12 +2,13 @@ import { useState } from "react";
 import styled from "styled-components";
 import imagemBody from "./img/capa.jpg";
 
+import "./index.css";
+
 const HeaderComponents = styled.header`
-  background-color: #282c34;
+  background-color: var(--escuro);
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  align-items: center;
   justify-content: center;
   font-size: calc(10px + 2vmin);
   color: white;
@@ -18,10 +19,15 @@ const HeaderDiv = styled.div`
 `;
 
 const HeaderInput = styled.input`
-  font-size: 20px;
   display: flex;
-  border-radius: 10px;
-  align-items: center;
+  width: 10%;
+  margin-left: 45%;
+  font-size: 1.5rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  color: var(--claro);
+  border: 1px solid var(--primeira);
 `;
 const BuscarCepH1 = styled.h1`
   font-family: sans-serif;
@@ -29,9 +35,10 @@ const BuscarCepH1 = styled.h1`
   color: white;
 `;
 
-const UlConpondentsCompondents = styled.h1`
+const DivCompondentsCompondents = styled.div`
   color: white;
   font-size: 26px;
+  text-align: center;
 `;
 
 function App() {
@@ -70,25 +77,24 @@ function App() {
         <div>
           <img src={imagemBody} alt="Minha imagem" />
         </div>
-        <BuscarCepH1>BUSCAR CEP</BuscarCepH1>
+        <BuscarCepH1>Buscar CEP</BuscarCepH1>
         <HeaderInput
           onChange={manipularEndereco}
-          className="cep"
           placeholder="Digite seu cep"
         />
 
-        <ul>
-          <UlConpondentsCompondents>
-            <li>Cep: {endereco.cep}</li>
-            <li>Rua: {endereco.rua}</li>
-            <li>Bairro: {endereco.bairro}</li>
-            <li>Cidade: {endereco.cidade}</li>
-            <li>Estado: {endereco.estado}</li>
-            <li>Região: {endereco.regiao}</li>
-            <li>Ibge: {endereco.ibge}</li>
-            <li>DDD: {endereco.ddd}</li>
-          </UlConpondentsCompondents>
-        </ul>
+        <section>
+          <DivCompondentsCompondents>
+            <div>Cep: {endereco.cep}</div>
+            <div>Rua: {endereco.rua}</div>
+            <div>Bairro: {endereco.bairro}</div>
+            <div>Cidade: {endereco.cidade}</div>
+            <div>Estado: {endereco.estado}</div>
+            <div>Região: {endereco.regiao}</div>
+            <div>Ibge: {endereco.ibge}</div>
+            <div>DDD: {endereco.ddd}</div>
+          </DivCompondentsCompondents>
+        </section>
       </HeaderComponents>
     </HeaderDiv>
   );
