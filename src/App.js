@@ -19,9 +19,7 @@ const HeaderDiv = styled.div`
 `;
 
 const HeaderInput = styled.input`
-  display: flex;
-  width: 10%;
-  margin-left: 45%;
+  margin: 0 auto;
   font-size: 1.5rem;
   padding: 1rem;
   background: rgba(255, 255, 255, 0.05);
