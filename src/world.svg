@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600">
+  <defs>
+    <radialGradient id="g" cx="50%" cy="45%" r="70%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.09"/>
+      <stop offset="60%" stop-color="#ffffff" stop-opacity="0.04"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="blur" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="1.4"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="600" fill="none"/>
+
+  <g opacity="0.55" filter="url(#blur)">
+    <path fill="url(#g)" d="M160 250c40-70 160-120 270-90 80 22 130 72 160 120 20 32-4 70-44 82-70 20-160 20-250-10-70-24-140-52-136-102z"/>
+    <path fill="url(#g)" d="M520 210c30-50 110-90 190-84 80 6 150 56 188 110 18 26 8 62-24 78-72 34-170 30-240-4-64-30-140-46-114-100z"/>
+    <path fill="url(#g)" d="M820 300c30-44 98-74 162-70 62 4 120 40 150 82 18 24 10 56-18 72-52 28-116 34-170 14-52-18-150-32-124-98z"/>
+    <path fill="url(#g)" d="M360 360c26-34 84-56 142-54 64 2 124 32 156 66 18 20 14 48-10 64-46 30-106 38-160 22-54-16-152-24-128-98z"/>
+    <path fill="url(#g)" d="M640 380c22-34 76-56 130-54 56 2 110 30 140 62 16 18 12 44-10 58-40 26-92 34-140 20-48-14-140-22-120-86z"/>
+  </g>
+
+  <g opacity="0.18">
+    <circle cx="220" cy="170" r="2" fill="#ffffff"/>
+    <circle cx="980" cy="140" r="2" fill="#ffffff"/>
+    <circle cx="1040" cy="430" r="2" fill="#ffffff"/>
+    <circle cx="140" cy="430" r="2" fill="#ffffff"/>
+    <circle cx="600" cy="120" r="2" fill="#ffffff"/>
+  </g>
+</svg>
