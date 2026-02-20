@@ -389,7 +389,6 @@ function App() {
     shadow: "strong",
   });
   const [coords, setCoords] = useState(null);
-  const [geoLoading, setGeoLoading] = useState(false);
 
   const debounceRef = useRef(null);
   const controllerRef = useRef(null);
@@ -466,7 +465,6 @@ function App() {
   const limparEndereco = useCallback(() => {
     setEndereco({});
     setCoords(null);
-    setGeoLoading(false);
     if (geoControllerRef.current) {
       geoControllerRef.current.abort();
     }
@@ -575,7 +573,6 @@ function App() {
           }
           const geoController = new AbortController();
           geoControllerRef.current = geoController;
-          setGeoLoading(true);
           setCoords(null);
 
           setEndereco({
@@ -613,11 +610,9 @@ function App() {
               if (Number.isFinite(lat) && Number.isFinite(lon)) {
                 setCoords({ lat, lon });
               }
-              setGeoLoading(false);
             })
             .catch((err) => {
               if (err?.name === "AbortError") return;
-              setGeoLoading(false);
             });
 
           salvarHistorico(cep);
