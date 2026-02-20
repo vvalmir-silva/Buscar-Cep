@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 import imagemBody from "./img/capa.jpg";
 
@@ -323,7 +323,7 @@ function App() {
     }
   }, []);
 
-  function salvarHistorico(novoCep) {
+  const salvarHistorico = useCallback((novoCep) => {
     const cep = novoCep.replace(/\D/g, "").slice(0, 8);
     if (cep.length !== 8) return;
 
@@ -336,18 +336,18 @@ function App() {
       }
       return unicos;
     });
-  }
+  }, []);
 
-  function limparHistorico() {
+  const limparHistorico = useCallback(() => {
     setHistorico([]);
     try {
       localStorage.removeItem("buscar-cep:historico");
     } catch {
       return;
     }
-  }
+  }, []);
 
-  function removerDoHistorico(cepParaRemover) {
+  const removerDoHistorico = useCallback((cepParaRemover) => {
     const cep = String(cepParaRemover || "").replace(/\D/g, "").slice(0, 8);
     if (!cep) return;
 
@@ -360,11 +360,11 @@ function App() {
       }
       return novo;
     });
-  }
+  }, []);
 
-  function limparEndereco() {
+  const limparEndereco = useCallback(() => {
     setEndereco({});
-  }
+  }, []);
 
   function atualizarCep(event) {
     const value = event.target.value;
@@ -388,64 +388,71 @@ function App() {
     }
   }
 
-  function buscarCep(cepParam) {
-    const cep = (cepParam || cepSomenteNumeros).replace(/\D/g, "").slice(0, 8);
+  const buscarCep = useCallback(
+    (cepParam) => {
+      const cep = (cepParam || cepSomenteNumeros)
+        .replace(/\D/g, "")
+        .slice(0, 8);
 
-    if (cep.length !== 8) {
-      setStatus("Digite um CEP válido com 8 dígitos.");
-      setLoading(false);
-      limparEndereco();
-      return;
-    }
-
-    if (controllerRef.current) {
-      controllerRef.current.abort();
-    }
-
-    const controller = new AbortController();
-    controllerRef.current = controller;
-
-    setLoading(true);
-    setStatus("Buscando endereço...");
-
-    fetch(`https://viacep.com.br/ws/${cep}/json/`, { signal: controller.signal })
-      .then((resposta) => {
-        if (!resposta.ok) {
-          throw new Error("Erro ao buscar CEP");
-        }
-        return resposta.json();
-      })
-      .then((dados) => {
-        if (dados?.erro) {
-          limparEndereco();
-          setStatus("CEP não encontrado.");
-          setLoading(false);
-          return;
-        }
-
-        setEndereco({
-          cep,
-          rua: dados.logradouro,
-          bairro: dados.bairro,
-          cidade: dados.localidade,
-          estado: dados.uf,
-          regiao: dados.regiao || "",
-          ibge: dados.ibge,
-          ddd: dados.ddd,
-        });
-        salvarHistorico(cep);
-        setStatus("Endereço carregado com sucesso.");
+      if (cep.length !== 8) {
+        setStatus("Digite um CEP válido com 8 dígitos.");
         setLoading(false);
-      })
-      .catch((err) => {
-        if (err?.name === "AbortError") {
-          return;
-        }
         limparEndereco();
-        setStatus("Não foi possível buscar o CEP. Verifique sua conexão.");
-        setLoading(false);
-      });
-  }
+        return;
+      }
+
+      if (controllerRef.current) {
+        controllerRef.current.abort();
+      }
+
+      const controller = new AbortController();
+      controllerRef.current = controller;
+
+      setLoading(true);
+      setStatus("Buscando endereço...");
+
+      fetch(`https://viacep.com.br/ws/${cep}/json/`, {
+        signal: controller.signal,
+      })
+        .then((resposta) => {
+          if (!resposta.ok) {
+            throw new Error("Erro ao buscar CEP");
+          }
+          return resposta.json();
+        })
+        .then((dados) => {
+          if (dados?.erro) {
+            limparEndereco();
+            setStatus("CEP não encontrado.");
+            setLoading(false);
+            return;
+          }
+
+          setEndereco({
+            cep,
+            rua: dados.logradouro,
+            bairro: dados.bairro,
+            cidade: dados.localidade,
+            estado: dados.uf,
+            regiao: dados.regiao || "",
+            ibge: dados.ibge,
+            ddd: dados.ddd,
+          });
+          salvarHistorico(cep);
+          setStatus("Endereço carregado com sucesso.");
+          setLoading(false);
+        })
+        .catch((err) => {
+          if (err?.name === "AbortError") {
+            return;
+          }
+          limparEndereco();
+          setStatus("Não foi possível buscar o CEP. Verifique sua conexão.");
+          setLoading(false);
+        });
+    },
+    [cepSomenteNumeros, limparEndereco, salvarHistorico]
+  );
 
   useEffect(() => {
     if (debounceRef.current) {
@@ -463,7 +470,7 @@ function App() {
         clearTimeout(debounceRef.current);
       }
     };
-  }, [cepSomenteNumeros]);
+  }, [buscarCep, cepSomenteNumeros]);
 
   function onKeyDownInput(event) {
     if (event.key === "Enter") {
