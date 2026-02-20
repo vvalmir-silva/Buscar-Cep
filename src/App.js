@@ -388,10 +388,13 @@ function App() {
     variant: "error",
     shadow: "strong",
   });
+  const [coords, setCoords] = useState(null);
+  const [geoLoading, setGeoLoading] = useState(false);
 
   const debounceRef = useRef(null);
   const controllerRef = useRef(null);
   const toastTimerRef = useRef(null);
+  const geoControllerRef = useRef(null);
 
   const cepSomenteNumeros = cepDigitado.replace(/\D/g, "").slice(0, 8);
   const cepFormatado = cepSomenteNumeros
@@ -462,6 +465,11 @@ function App() {
 
   const limparEndereco = useCallback(() => {
     setEndereco({});
+    setCoords(null);
+    setGeoLoading(false);
+    if (geoControllerRef.current) {
+      geoControllerRef.current.abort();
+    }
   }, []);
 
   const fecharToast = useCallback(() => {
@@ -562,6 +570,14 @@ function App() {
             return;
           }
 
+          if (geoControllerRef.current) {
+            geoControllerRef.current.abort();
+          }
+          const geoController = new AbortController();
+          geoControllerRef.current = geoController;
+          setGeoLoading(true);
+          setCoords(null);
+
           setEndereco({
             cep,
             rua: dados.logradouro,
@@ -572,6 +588,38 @@ function App() {
             ibge: dados.ibge,
             ddd: dados.ddd,
           });
+
+          const enderecoTexto = [
+            dados.logradouro,
+            dados.bairro,
+            dados.localidade,
+            dados.uf,
+            "Brasil",
+          ]
+            .filter(Boolean)
+            .join(", ");
+
+          fetch(
+            `https://geocode.maps.co/search?q=${encodeURIComponent(
+              enderecoTexto
+            )}`,
+            { signal: geoController.signal }
+          )
+            .then((r) => (r.ok ? r.json() : []))
+            .then((arr) => {
+              const first = Array.isArray(arr) ? arr[0] : null;
+              const lat = first?.lat ? Number(first.lat) : null;
+              const lon = first?.lon ? Number(first.lon) : null;
+              if (Number.isFinite(lat) && Number.isFinite(lon)) {
+                setCoords({ lat, lon });
+              }
+              setGeoLoading(false);
+            })
+            .catch((err) => {
+              if (err?.name === "AbortError") return;
+              setGeoLoading(false);
+            });
+
           salvarHistorico(cep);
           setStatus("Endereço carregado com sucesso.");
           setLoading(false);
@@ -625,6 +673,9 @@ function App() {
       endereco.bairro ? `Bairro: ${endereco.bairro}` : "",
       endereco.cidade ? `Cidade: ${endereco.cidade}` : "",
       endereco.estado ? `UF: ${endereco.estado}` : "",
+      coords?.lat && coords?.lon
+        ? `Coordenadas: ${coords.lat.toFixed(6)}, ${coords.lon.toFixed(6)}`
+        : "",
       endereco.ddd ? `DDD: ${endereco.ddd}` : "",
       endereco.ibge ? `IBGE: ${endereco.ibge}` : "",
     ]
@@ -803,6 +854,43 @@ function App() {
               <ResultItem>
                 <ResultLabel>IBGE</ResultLabel>
                 <ResultValue>{endereco.ibge || "—"}</ResultValue>
+              </ResultItem>
+              <ResultItem>
+                <ResultLabel>Coordenadas</ResultLabel>
+                <ResultValue>
+                  {geoLoading
+                    ? "Buscando coordenadas..."
+                    : coords?.lat && coords?.lon
+                      ? `${coords.lat.toFixed(6)}, ${coords.lon.toFixed(6)}`
+                      : "—"}
+                </ResultValue>
+              </ResultItem>
+              <ResultItem>
+                <ResultLabel>Mapa</ResultLabel>
+                <ResultValue>
+                  <PrimaryButton
+                    as="a"
+                    href={
+                      coords?.lat && coords?.lon
+                        ? `https://www.google.com/maps?q=${coords.lat},${coords.lon}`
+                        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                            [
+                              endereco.rua,
+                              endereco.bairro,
+                              endereco.cidade,
+                              endereco.estado,
+                              "Brasil",
+                            ]
+                              .filter(Boolean)
+                              .join(", ")
+                          )}`
+                    }
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Abrir no Google Maps
+                  </PrimaryButton>
+                </ResultValue>
               </ResultItem>
             </ResultsGrid>
           )}
