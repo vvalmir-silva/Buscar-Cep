@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import styled from "styled-components";
+import styled, { keyframes } from "styled-components";
 import imagemBody from "./img/capa.jpg";
 
 import "./index.css";
@@ -285,15 +285,113 @@ const VisuallyHiddenLabel = styled.label`
   border: 0;
 `;
 
+const toastIn = keyframes`
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+`;
+
+const ToastRegion = styled.div`
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 9999;
+  width: min(420px, calc(100vw - 32px));
+  display: grid;
+  gap: 10px;
+`;
+
+const Toast = styled.div`
+  border-radius: 14px;
+  padding: 12px 14px;
+  border: 1px solid
+    ${(props) => {
+      if (props.$variant === "success") return "rgba(34, 197, 94, 0.35)";
+      if (props.$variant === "warn") return "rgba(234, 179, 8, 0.38)";
+      return "rgba(239, 68, 68, 0.40)";
+    }};
+  background: ${(props) => {
+    if (props.$variant === "success") {
+      return "linear-gradient(180deg, rgba(34, 197, 94, 0.16), rgba(34, 197, 94, 0.08))";
+    }
+    if (props.$variant === "warn") {
+      return "linear-gradient(180deg, rgba(234, 179, 8, 0.18), rgba(234, 179, 8, 0.08))";
+    }
+    return "linear-gradient(180deg, rgba(239, 68, 68, 0.16), rgba(239, 68, 68, 0.08))";
+  }};
+  color: rgba(227, 232, 240, 0.98);
+  box-shadow: ${(props) =>
+    props.$shadow === "strong"
+      ? "0 24px 70px rgba(2, 6, 23, 0.74)"
+      : "0 16px 44px rgba(2, 6, 23, 0.55)"};
+  backdrop-filter: blur(10px);
+  animation: ${toastIn} 160ms ease-out;
+`;
+
+const ToastHeader = styled.div`
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+`;
+
+const ToastClose = styled.button`
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(227, 232, 240, 0.92);
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+  line-height: 1;
+  padding: 0;
+  transition: background 160ms ease, border-color 160ms ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.10);
+    border-color: rgba(255, 255, 255, 0.22);
+  }
+`;
+
+const ToastTitle = styled.div`
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: -0.01em;
+`;
+
+const ToastText = styled.div`
+  margin-top: 4px;
+  font-size: 13px;
+  color: rgba(227, 232, 240, 0.88);
+  line-height: 1.35;
+`;
+
 function App() {
   const [endereco, setEndereco] = useState({});
   const [cepDigitado, setCepDigitado] = useState("");
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("");
   const [historico, setHistorico] = useState([]);
+  const [toast, setToast] = useState({
+    visible: false,
+    title: "",
+    message: "",
+    variant: "error",
+    shadow: "strong",
+  });
 
   const debounceRef = useRef(null);
   const controllerRef = useRef(null);
+  const toastTimerRef = useRef(null);
 
   const cepSomenteNumeros = cepDigitado.replace(/\D/g, "").slice(0, 8);
   const cepFormatado = cepSomenteNumeros
@@ -366,6 +464,37 @@ function App() {
     setEndereco({});
   }, []);
 
+  const fecharToast = useCallback(() => {
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+    }
+    setToast((t) => ({ ...t, visible: false }));
+  }, []);
+
+  const mostrarToast = useCallback((
+    title,
+    message,
+    variant = "error",
+    shadow = "strong"
+  ) => {
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+    }
+
+    setToast({ visible: true, title, message, variant, shadow });
+    toastTimerRef.current = setTimeout(() => {
+      setToast((t) => ({ ...t, visible: false }));
+    }, 3800);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) {
+        clearTimeout(toastTimerRef.current);
+      }
+    };
+  }, []);
+
   function atualizarCep(event) {
     const value = event.target.value;
     const digits = value.replace(/\D/g, "").slice(0, 8);
@@ -425,6 +554,11 @@ function App() {
             limparEndereco();
             setStatus("CEP não encontrado.");
             setLoading(false);
+            mostrarToast(
+              "CEP não encontrado",
+              "Verifique se você digitou corretamente e tente novamente.",
+              "error"
+            );
             return;
           }
 
@@ -449,9 +583,14 @@ function App() {
           limparEndereco();
           setStatus("Não foi possível buscar o CEP. Verifique sua conexão.");
           setLoading(false);
+          mostrarToast(
+            "Falha na busca",
+            "Não foi possível consultar o CEP agora. Tente novamente em alguns instantes.",
+            "error"
+          );
         });
     },
-    [cepSomenteNumeros, limparEndereco, salvarHistorico]
+    [cepSomenteNumeros, limparEndereco, mostrarToast, salvarHistorico]
   );
 
   useEffect(() => {
@@ -514,6 +653,19 @@ function App() {
 
   return (
     <Page>
+      {toast.visible ? (
+        <ToastRegion aria-live="polite" aria-atomic="true">
+          <Toast $variant={toast.variant} $shadow={toast.shadow} role="status">
+            <ToastHeader>
+              <ToastTitle>{toast.title}</ToastTitle>
+              <ToastClose type="button" onClick={fecharToast} aria-label="Fechar">
+                ×
+              </ToastClose>
+            </ToastHeader>
+            <ToastText>{toast.message}</ToastText>
+          </Toast>
+        </ToastRegion>
+      ) : null}
       <Container>
         <Card>
           <Header>
