@@ -772,6 +772,30 @@ function App() {
                   <Button type="button" onClick={copiarResultado} disabled={!temResultado}>
                     Copiar
                   </Button>
+                  {temResultado && (
+                    <PrimaryButton
+                      as="a"
+                      href={
+                        coords?.lat && coords?.lon
+                          ? `https://www.google.com/maps?q=${coords.lat},${coords.lon}`
+                          : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                              [
+                                endereco.rua,
+                                endereco.bairro,
+                                endereco.cidade,
+                                endereco.estado,
+                                "Brasil",
+                              ]
+                                .filter(Boolean)
+                                .join(", ")
+                          )}`
+                      }
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Abrir no Google Maps
+                    </PrimaryButton>
+                  )}
                 </ActionsRow>
                 <Hint id="cep-hint">
                   CEP atual: <strong>{cepFormatado || "—"}</strong>
@@ -855,44 +879,7 @@ function App() {
                 <ResultLabel>IBGE</ResultLabel>
                 <ResultValue>{endereco.ibge || "—"}</ResultValue>
               </ResultItem>
-              <ResultItem>
-                <ResultLabel>Coordenadas</ResultLabel>
-                <ResultValue>
-                  {geoLoading
-                    ? "Buscando coordenadas..."
-                    : coords?.lat && coords?.lon
-                      ? `${coords.lat.toFixed(6)}, ${coords.lon.toFixed(6)}`
-                      : "—"}
-                </ResultValue>
-              </ResultItem>
-              <ResultItem>
-                <ResultLabel>Mapa</ResultLabel>
-                <ResultValue>
-                  <PrimaryButton
-                    as="a"
-                    href={
-                      coords?.lat && coords?.lon
-                        ? `https://www.google.com/maps?q=${coords.lat},${coords.lon}`
-                        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                            [
-                              endereco.rua,
-                              endereco.bairro,
-                              endereco.cidade,
-                              endereco.estado,
-                              "Brasil",
-                            ]
-                              .filter(Boolean)
-                              .join(", ")
-                          )}`
-                    }
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Abrir no Google Maps
-                  </PrimaryButton>
-                </ResultValue>
-              </ResultItem>
-            </ResultsGrid>
+                          </ResultsGrid>
           )}
         </Card>
       </Container>

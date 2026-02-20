@@ -16,12 +16,12 @@ body {
   background-image: url("./world.svg"),
     radial-gradient(
       900px circle at 15% 20%,
-      rgba(79, 70, 229, 0.25),
+      rgba(37, 99, 235, 0.25),
       transparent 60%
     ),
     radial-gradient(
       900px circle at 85% 10%,
-      rgba(124, 58, 237, 0.18),
+      rgba(59, 130, 246, 0.18),
       transparent 55%
     );
   background-repeat: no-repeat, no-repeat, no-repeat;
@@ -39,9 +39,9 @@ body::before {
 }
 
 :root {
-  --primeira: #4f46e5;
-  --segundo: #7c3aed;
-  --escuro: #0f172a;
+  --primeira: #2563eb;
+  --segundo: #3b82f6;
+  --escuro: #0c1929;
   --claro: #e3e8f0;
   --vidro: rgba(255, 255, 255, 0.1);
   --borda: rgba(255, 255, 255, 0.14);
