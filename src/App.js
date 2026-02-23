@@ -84,6 +84,7 @@ const InputRow = styled.div`
   margin-top: 6px;
   display: grid;
   gap: 10px;
+  position: relative;
 `;
 
 const HeaderInput = styled.input`
@@ -209,6 +210,37 @@ const StatusMessage = styled.div`
   margin-top: 10px;
   font-size: 13px;
   color: var(--texto-fraco);
+  &[data-success="true"] {
+    color: #10b981;
+    font-weight: 500;
+  }
+  &[data-error="true"] {
+    color: #ef4444;
+    font-weight: 500;
+  }
+`;
+
+const AutocompleteContainer = styled.div`
+  position: relative;
+  width: 100%;
+`;
+
+const AutocompleteDropdown = styled.div`
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: rgba(30, 41, 59, 0.95);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(79, 70, 229, 0.3);
+  border-radius: 12px;
+  margin-top: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 9999;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+  width: 100%;
+  box-sizing: border-box;
 `;
 
 const HistoryWrap = styled.div`
@@ -389,6 +421,9 @@ function App() {
     shadow: "strong",
   });
   const [coords, setCoords] = useState(null);
+  const [enderecoDigitado, setEnderecoDigitado] = useState("");
+  const [sugestoesEndereco, setSugestoesEndereco] = useState([]);
+  const [mostrarSugestoes, setMostrarSugestoes] = useState(false);
 
   const debounceRef = useRef(null);
   const controllerRef = useRef(null);
@@ -462,6 +497,168 @@ function App() {
     });
   }, []);
 
+  const buscarEnderecos = useCallback(
+    async (endereco) => {
+      if (endereco.length < 3) {
+        setSugestoesEndereco([]);
+        setMostrarSugestoes(false);
+        return;
+      }
+      
+      try {
+        // Lista de estados brasileiros para busca
+        const estados = ['SP', 'RJ', 'MG', 'BA', 'RS', 'PR', 'SC', 'GO', 'DF', 'MT', 'MS', 'PE', 'CE', 'PA', 'AM', 'ES', 'MA', 'RN', 'PB', 'AL', 'SE', 'TO', 'RO', 'AC', 'RR', 'AP'];
+        
+        // Para cada estado, tentar buscar em cidades principais
+        const cidadesPrincipais = {
+          'SP': ['São Paulo', 'Santo André', 'São Bernardo do Campo', 'São Caetano do Sul', 'Diadema', 'Guarulhos', 'Osasco', 'Sorocaba', 'Campinas'],
+          'RJ': ['Rio de Janeiro', 'Niterói', 'São Gonçalo', 'Duque de Caxias', 'Nova Iguaçu', 'Petrópolis'],
+          'MG': ['Belo Horizonte', 'Uberlândia', 'Contagem', 'Betim', 'Juiz de Fora'],
+          'BA': ['Salvador', 'Feira de Santana', 'Vitória da Conquista'],
+          'RS': ['Porto Alegre', 'Caxias do Sul', 'Gravataí', 'Canoas'],
+          'PR': ['Curitiba', 'Londrina', 'Maringá', 'Ponta Grossa'],
+          'SC': ['Florianópolis', 'Joinville', 'Blumenau'],
+          'GO': ['Goiânia', 'Aparecida de Goiânia', 'Anápolis'],
+          'DF': ['Brasília'],
+          'MT': ['Cuiabá', 'Várzea Grande'],
+          'MS': ['Campo Grande', 'Três Lagoas'],
+          'PE': ['Recife', 'Jaboatão dos Guararapes', 'Olinda'],
+          'CE': ['Fortaleza', 'Caucaia', 'Juazeiro do Norte'],
+          'PA': ['Belém', 'Ananindeua'],
+          'AM': ['Manaus'],
+          'ES': ['Vitória', 'Vila Velha', 'Serra'],
+          'MA': ['São Luís'],
+          'RN': ['Natal'],
+          'PB': ['João Pessoa', 'Campina Grande'],
+          'AL': ['Maceió'],
+          'SE': ['Aracaju'],
+          'TO': ['Palmas'],
+          'RO': ['Porto Velho'],
+          'AC': ['Rio Branco'],
+          'RR': ['Boa Vista'],
+          'AP': ['Macapá']
+        };
+        
+        const resultados = [];
+        
+        // Buscar em cada estado/cidade principal
+        for (const estado of estados.slice(0, 5)) { // Limitar para 5 estados para não sobrecarregar
+          const cidades = cidadesPrincipais[estado] || [];
+          
+          for (const cidade of cidades.slice(0, 3)) { // Limitar para 3 cidades por estado
+            try {
+              const url = `https://viacep.com.br/ws/${encodeURIComponent(estado)}/${encodeURIComponent(cidade)}/${encodeURIComponent(endereco)}/json/`;
+              const response = await fetch(url);
+              
+              if (response.ok) {
+                const data = await response.json();
+                if (Array.isArray(data) && data.length > 0) {
+                  // Adicionar resultados que contêm o termo buscado
+                  const resultadosFiltrados = data.filter(item => 
+                    item.logradouro?.toLowerCase().includes(endereco.toLowerCase()) ||
+                    item.bairro?.toLowerCase().includes(endereco.toLowerCase())
+                  );
+                  
+                  resultados.push(...resultadosFiltrados.map(item => ({
+                    ...item,
+                    rua: item.logradouro,
+                    bairro: item.bairro,
+                    cidade: item.localidade,
+                    estado: item.uf,
+                    logradouro: item.logradouro,
+                    localidade: item.localidade,
+                    uf: item.uf
+                  })));
+                }
+              }
+            } catch (error) {
+              console.error('Erro na busca:', error);
+              // Continuar para próxima cidade se houver erro
+              continue;
+            }
+            
+            // Se já encontrou resultados suficientes, parar
+            if (resultados.length >= 5) break;
+          }
+          
+          if (resultados.length >= 5) break;
+        }
+        
+        // Remover duplicatas e limitar a 5 resultados
+        const resultadosUnicos = resultados.filter((item, index, self) =>
+          index === self.findIndex((t) => t.cep === item.cep)
+        ).slice(0, 5);
+        
+        setSugestoesEndereco(resultadosUnicos);
+        setMostrarSugestoes(true);
+      } catch (error) {
+        console.error('Erro na busca de endereço:', error);
+        setSugestoesEndereco([]);
+        setMostrarSugestoes(false);
+      }
+    },
+    []
+  );
+
+  const selecionarEndereco = useCallback((enderecoSelecionado) => {
+    setCepDigitado(enderecoSelecionado.cep || "");
+    setEnderecoDigitado("");
+    setMostrarSugestoes(false);
+    setSugestoesEndereco([]);
+    
+    const enderecoFormatado = {
+      cep: enderecoSelecionado.cep,
+      rua: enderecoSelecionado.logradouro || enderecoSelecionado.street,
+      bairro: enderecoSelecionado.bairro || enderecoSelecionado.neighborhood,
+      cidade: enderecoSelecionado.localidade || enderecoSelecionado.city,
+      estado: enderecoSelecionado.uf || enderecoSelecionado.state,
+      regiao: enderecoSelecionado.regiao || "",
+      ibge: enderecoSelecionado.ibge,
+      ddd: enderecoSelecionado.ddd,
+    };
+    
+    setEndereco(enderecoFormatado);
+    
+    setStatus({ text: "Endereço carregado com sucesso.", success: true });
+    if (enderecoSelecionado.cep) {
+      salvarHistorico(enderecoSelecionado.cep);
+    }
+    
+    if (geoControllerRef.current) {
+      geoControllerRef.current.abort();
+    }
+    const geoController = new AbortController();
+    geoControllerRef.current = geoController;
+    setCoords(null);
+
+    const enderecoTexto = [
+      enderecoSelecionado.logradouro || enderecoSelecionado.street,
+      enderecoSelecionado.bairro || enderecoSelecionado.neighborhood,
+      enderecoSelecionado.localidade || enderecoSelecionado.city,
+      enderecoSelecionado.uf || enderecoSelecionado.state,
+      "Brasil",
+    ]
+      .filter(Boolean)
+      .join(", ");
+
+    fetch(
+      `https://geocode.maps.co/search?q=${encodeURIComponent(enderecoTexto)}`,
+      { signal: geoController.signal }
+    )
+      .then((r) => (r.ok ? r.json() : []))
+      .then((arr) => {
+        const first = Array.isArray(arr) ? arr[0] : null;
+        const lat = first?.lat ? Number(first.lat) : null;
+        const lon = first?.lon ? Number(first.lon) : null;
+        if (Number.isFinite(lat) && Number.isFinite(lon)) {
+          setCoords({ lat, lon });
+        }
+      })
+      .catch((err) => {
+        if (err?.name === "AbortError") return;
+      });
+  }, [salvarHistorico]);
+
   const limparEndereco = useCallback(() => {
     setEndereco({});
     setCoords(null);
@@ -510,6 +707,8 @@ function App() {
 
     setCepDigitado(masked);
     setStatus("");
+    setEnderecoDigitado("");
+    setMostrarSugestoes(false);
 
     if (digits.length < 8) {
       setLoading(false);
@@ -520,6 +719,27 @@ function App() {
         clearTimeout(debounceRef.current);
       }
       limparEndereco();
+    }
+  }
+
+  function atualizarEndereco(event) {
+    const value = event.target.value;
+    setEnderecoDigitado(value);
+    setCepDigitado("");
+    setStatus("");
+    limparEndereco();
+
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+
+    if (value.length >= 3) {
+      debounceRef.current = setTimeout(() => {
+        buscarEnderecos(value);
+      }, 500);
+    } else {
+      setSugestoesEndereco([]);
+      setMostrarSugestoes(false);
     }
   }
 
@@ -558,7 +778,7 @@ function App() {
         .then((dados) => {
           if (dados?.erro) {
             limparEndereco();
-            setStatus("CEP não encontrado.");
+            setStatus({ text: "CEP não encontrado.", error: true });
             setLoading(false);
             mostrarToast(
               "CEP não encontrado",
@@ -616,7 +836,7 @@ function App() {
             });
 
           salvarHistorico(cep);
-          setStatus("Endereço carregado com sucesso.");
+          setStatus({ text: "Endereço carregado com sucesso.", success: true });
           setLoading(false);
         })
         .catch((err) => {
@@ -653,6 +873,17 @@ function App() {
       }
     };
   }, [buscarCep, cepSomenteNumeros]);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (mostrarSugestoes && !event.target.closest('.autocomplete-container')) {
+        setMostrarSugestoes(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [mostrarSugestoes]);
 
   function onKeyDownInput(event) {
     if (event.key === "Enter") {
@@ -723,25 +954,134 @@ function App() {
               <div>
                 <Title>Buscar CEP</Title>
                 <Subtitle>
-                  Digite um CEP válido (apenas números). Ao completar 8 dígitos,
+                  Digite um CEP válido ou um endereço (rua, bairro, cidade). 
+                  Ao completar 8 dígitos do CEP ou digitar 3+ caracteres do endereço,
                   os dados são buscados automaticamente.
                 </Subtitle>
               </div>
 
               <InputRow>
+                <AutocompleteContainer className="autocomplete-container">
                 <VisuallyHiddenLabel htmlFor="cep-input">
-                  Digite o CEP
+                  Digite o CEP ou endereço
                 </VisuallyHiddenLabel>
                 <HeaderInput
                   id="cep-input"
-                  value={cepDigitado}
-                  onChange={atualizarCep}
+                  value={cepDigitado || enderecoDigitado}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Verificar se é um CEP (formato XXXXX-XXX ou XXXXXXXX)
+                    const apenasNumeros = value.replace(/\D/g, '');
+                    const cepPattern = /^\d{5}-?\d{0,3}$/;
+                    if (apenasNumeros.length >= 8 && cepPattern.test(value)) {
+                      atualizarCep(e);
+                    } else {
+                      atualizarEndereco(e);
+                    }
+                  }}
                   onKeyDown={onKeyDownInput}
-                  placeholder="Ex: 01001000"
-                  inputMode="numeric"
-                  maxLength={9}
+                  placeholder="CEP ou endereço (ex: Paulista, São Paulo)"
+                  inputMode="text"
+                  maxLength={100}
                   aria-describedby="cep-hint cep-status"
                 />
+                {mostrarSugestoes && (
+                  <AutocompleteDropdown>
+                    {sugestoesEndereco.length > 0 ? (
+                      sugestoesEndereco.map((endereco, index) => (
+                        <div
+                          key={`${endereco.cep || 'sem-cep'}-${index}`}
+                          style={{
+                            width: '100%',
+                            padding: '14px 18px',
+                            background: 'transparent',
+                            border: 'none',
+                            textAlign: 'left',
+                            color: 'rgba(227, 232, 240, 0.95)',
+                            fontSize: '14px',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                            borderBottom: '1px solid rgba(79, 70, 229, 0.1)',
+                            boxSizing: 'border-box',
+                            display: 'block',
+                            whiteSpace: 'normal',
+                            lineHeight: '1.4'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.target.style.background = 'rgba(79, 70, 229, 0.15)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.target.style.background = 'transparent';
+                          }}
+                          onMouseDown={() => {
+                            if (endereco.cep) {
+                              selecionarEndereco(endereco);
+                            } else {
+                              // Se não tiver CEP, ainda assim preencher os dados disponíveis
+                              setEndereco({
+                                cep: '',
+                                rua: endereco.logradouro || endereco.street,
+                                bairro: endereco.bairro || endereco.neighborhood,
+                                cidade: endereco.localidade || endereco.city,
+                                estado: endereco.uf || endereco.state,
+                                regiao: endereco.regiao || "",
+                                ibge: endereco.ibge,
+                                ddd: endereco.ddd,
+                              });
+                              setCepDigitado("");
+                              setEnderecoDigitado("");
+                              setMostrarSugestoes(false);
+                              setSugestoesEndereco([]);
+                              setStatus({ text: "Endereço carregado (sem CEP disponível).", success: true });
+                            }
+                          }}
+                          title={endereco.cep ? "Clique para carregar este endereço" : "Endereço sem CEP - clique para ver detalhes"}
+                        >
+                          {endereco.cep ? (
+                            <>
+                              <strong>{endereco.cep}</strong> - {[
+                                endereco.logradouro || endereco.street,
+                                endereco.bairro || endereco.neighborhood,
+                                endereco.cidade || endereco.city,
+                                endereco.estado || endereco.state
+                              ].filter(Boolean).join(', ')}
+                            </>
+                          ) : (
+                            <>
+                              {[
+                                endereco.logradouro || endereco.street,
+                                endereco.bairro || endereco.neighborhood,
+                                endereco.cidade || endereco.city,
+                                endereco.estado || endereco.state
+                              ].filter(Boolean).join(', ')}
+                              <small style={{opacity: 0.7, marginLeft: '8px'}}>(Sem CEP)</small>
+                            </>
+                          )}
+                        </div>
+                      ))
+                    ) : (
+                      <div
+                        style={{
+                          width: '100%',
+                          padding: '14px 18px',
+                          background: 'transparent',
+                          border: 'none',
+                          textAlign: 'left',
+                          color: 'rgba(227, 232, 240, 0.6)',
+                          fontSize: '14px',
+                          cursor: 'not-allowed',
+                          boxSizing: 'border-box',
+                          display: 'block',
+                          whiteSpace: 'normal',
+                          lineHeight: '1.4'
+                        }}
+                      >
+                        Nenhum endereço encontrado
+                      </div>
+                    )}
+                    </AutocompleteDropdown>
+                )}
+              </AutocompleteContainer>
                 <ActionsRow>
                   <PrimaryButton
                     type="button"
@@ -793,10 +1133,16 @@ function App() {
                   )}
                 </ActionsRow>
                 <Hint id="cep-hint">
-                  CEP atual: <strong>{cepFormatado || "—"}</strong>
+                  CEP/Endereço atual: <strong>{cepFormatado || enderecoDigitado || "—"}</strong>
                 </Hint>
-                <StatusMessage id="cep-status" role="status" aria-live="polite">
-                  {status || ""}
+                <StatusMessage 
+                  id="cep-status" 
+                  role="status" 
+                  aria-live="polite"
+                  data-success={typeof status === 'object' ? status.success : false}
+                  data-error={typeof status === 'object' ? status.error : false}
+                >
+                  {typeof status === 'object' ? status.text : status || ""}
                 </StatusMessage>
 
                 {historico.length > 0 ? (
@@ -839,7 +1185,6 @@ function App() {
 
         <Card>
           <ResultsTitle>Resultado</ResultsTitle>
-
           {!temResultado ? (
             <EmptyState>
               Preencha o campo acima com um CEP de 8 dígitos para ver o endereço.
@@ -848,7 +1193,9 @@ function App() {
             <ResultsGrid>
               <ResultItem>
                 <ResultLabel>CEP</ResultLabel>
-                <ResultValue>{cepFormatado || "—"}</ResultValue>
+                <ResultValue>
+                  {endereco.cep ? endereco.cep.replace(/(\d{5})(\d{3})/, "$1-$2") : cepFormatado || "—"}
+                </ResultValue>
               </ResultItem>
               <ResultItem>
                 <ResultLabel>Rua</ResultLabel>
